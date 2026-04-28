@@ -27,23 +27,7 @@ fi
 # ck         22715  2.7  1.7 12279920 559548 pts/0 Sl   16:13   1:04 java -jar application/target/ehrbase.jar
 
 java -jar application/target/ehrbase.jar 2>&1 | tee ehrbase.log &
-counter=1
-while [ $counter -le 60 ]
-do
-    echo "Count: $counter"
-	started=`grep -c "Started EhrBase in" ehrbase.log`
-	if [ -n "$started" ] ; then
-		echo "EhrBase started."
-		break
-	fi
-    ((counter++))
-    sleep 5
-done
-if [ $counter -gt 60 ] ; then
-    echo "EhrBase failed to start within 5 minutes."
-    exit -671
-fi
-
+sleep 20 # TODO? Check if server is up instead of sleeping.
 cd ..
 if [ -d "integration-tests" ] ; then
 	rm -rf integration-tests
@@ -57,18 +41,21 @@ if [ $? -ne 0 ] ; then
 	echo "Failed to clone integration-tests repo."
 	exit -671
 fi
-
 cd integration-tests/tests
 sed -i 's/RESTinstance == 1.8.0/RESTinstance/g' requirements.txt
 if [ $? -ne 0 ] ; then
 	echo "Failed to sed -i 's/RESTinstance == 1.8.0/RESTinstance/g' requirements.txt"
 	exit -672
 fi
-
 pip install -r ./requirements.txt
 if [ $? -ne 0 ] ; then
 	echo "Failed to pip install -r requirements.txt"
 	exit -673
+fi
+sed -i 's/-noncritical/-skiponfailure/g' run_local_tests.sh
+if [ $? -ne 0 ] ; then
+	echo "Failed to sed -i 's/RESTinstance == 1.8.0/RESTinstance/g' run_local_tests.sh"
+	exit -672
 fi
 chmod a+x ./run_local_tests.sh
 ./run_local_tests.sh
