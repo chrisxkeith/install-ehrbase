@@ -4,6 +4,9 @@
 # This script deletes your current local integration-tests repo,
 # in an attempt to start with a clean slate.
 
+# This script is intended to be run from the parent directory of your local repo(s).
+# Will take a few minutes to complete, e.g. "real    11m3.025s"
+
 set -x
 
 # ------------------------------------------------------------
@@ -27,7 +30,7 @@ fi
 # ck         22715  2.7  1.7 12279920 559548 pts/0 Sl   16:13   1:04 java -jar application/target/ehrbase.jar
 
 java -jar application/target/ehrbase.jar 2>&1 | tee ehrbase.log &
-sleep 20 # TODO? Check if server is up instead of sleeping.
+sleep 20 # TODO? Check if server is up (How?) instead of sleeping.
 cd ..
 if [ -d "integration-tests" ] ; then
 	rm -rf integration-tests
@@ -54,8 +57,16 @@ if [ $? -ne 0 ] ; then
 fi
 sed -i 's/-noncritical/-skiponfailure/g' run_local_tests.sh
 if [ $? -ne 0 ] ; then
-	echo "Failed to sed -i 's/RESTinstance == 1.8.0/RESTinstance/g' run_local_tests.sh"
+	echo "Failed to sed -i 's/-noncritical/-skiponfailure/g' run_local_tests.sh"
 	exit -672
 fi
 chmod a+x ./run_local_tests.sh
-./run_local_tests.sh
+./run_local_tests.sh 2>&1 | tee integration-tests.log
+if [ $? -ne 0 ] ; then
+	echo "Failed to run ./run_local_tests.sh"
+	exit -674
+fi
+failures=$(grep " FAIL " integration-tests.log | wc -l)
+echo "Number of failed tests: $failures"
+errors=$(grep " ERROR " integration-tests.log | grep -v "Next step fails due to a bug!" | wc -l)
+echo "Number of errors: $errors"
